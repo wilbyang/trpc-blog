@@ -13,6 +13,7 @@ interface EditorProps {
 
 export function RichEditor({ value, onChange, className }: EditorProps) {
   const editor = useEditor({
+    immediatelyRender: false,
     extensions: [StarterKit],
     content: value,
     editorProps: {
