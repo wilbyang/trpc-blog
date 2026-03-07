@@ -1,7 +1,16 @@
 import { createCallerFactory } from "@/server/trpc";
 import { appRouter } from "@/server/routers/_app";
-import { createContext } from "@/server/context";
+import { auth } from "@/auth";
 
 const createCaller = createCallerFactory(appRouter);
 
-export const serverCaller = createCaller(createContext);
+// Server-side caller for RSC: reads session via next/headers (auth() works fine here)
+export const serverCaller = createCaller(async () => {
+  const session = await auth();
+  if (!session?.user?.email) return { session: null };
+  return {
+    session: {
+      user: { email: session.user.email, name: session.user.name ?? "" },
+    },
+  };
+});
