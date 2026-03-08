@@ -1,13 +1,30 @@
+import { cookies } from "next/headers";
 import { getToken } from "next-auth/jwt";
-import type { FetchCreateContextFnOptions } from "@trpc/server/adapters/fetch";
 
-export async function createContext({ req }: FetchCreateContextFnOptions) {
+export async function createContext() {
+  const cookieStore = await cookies();
+
+  // Try both the HTTP (dev) and HTTPS (prod) cookie names
+  const httpCookieName = "authjs.session-token";
+  const httpsCookieName = "__Secure-authjs.session-token";
+
+  const httpToken = cookieStore.get(httpCookieName)?.value;
+  const httpsToken = cookieStore.get(httpsCookieName)?.value;
+  const sessionToken = httpToken ?? httpsToken;
+  const cookieName = httpToken ? httpCookieName : httpsCookieName;
+
+  if (!sessionToken) return { session: null };
+
+  // Build a minimal Request so getToken can decode the JWE
+  const fakeReq = new Request("http://localhost", {
+    headers: { cookie: `${cookieName}=${sessionToken}` },
+  });
+
   const token = await getToken({
-    req,
+    req: fakeReq,
     secret: process.env.AUTH_SECRET,
-    // NextAuth v5 uses "authjs.session-token" as both cookie name and salt
-    cookieName: "authjs.session-token",
-    salt: "authjs.session-token",
+    cookieName,
+    salt: cookieName,
   });
 
   const session = token
